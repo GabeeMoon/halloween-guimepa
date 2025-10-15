@@ -1,0 +1,105 @@
+body {
+  background-color: #000;
+  font-family: 'Press Start 2P', cursive;
+  color: #fff;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#game-container {
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  margin: auto;
+  box-shadow: 0 0 40px rgba(0, 255, 255, 0.4);
+  border: 3px solid rgba(0, 255, 255, 0.5);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: linear-gradient(180deg, #202040 0%, #000010 100%);
+}
+
+#score-display {
+  position: absolute;
+  top: 15px;
+  right: 25px;
+  font-size: 28px;
+  color: #fff;
+  text-shadow: 2px 2px #000;
+  z-index: 2;
+}
+
+#start-screen,
+#game-over-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+#start-screen input {
+  margin-bottom: 20px;
+  padding: 10px;
+  font-size: 18px;
+  text-align: center;
+  width: 250px;
+}
+
+#start-screen button,
+#game-over-screen button {
+  padding: 12px 24px;
+  font-size: 16px;
+  font-family: 'Press Start 2P', cursive;
+  background: #0ff;
+  color: #000;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: 0.3s;
+}
+
+#start-screen button:hover,
+#game-over-screen button:hover {
+  background: #fff;
+  color: #111;
+  transform: scale(1.05);
+}
+
+#game-over-screen {
+  display: none;
+}
+
+#game-over-screen h2,
+#game-over-screen h3 {
+  margin: 10px 0;
+}
+
+#game-over-screen ol {
+  list-style-position: inside;
+  padding: 0;
+}
+
+#game-over-screen li {
+  margin: 5px 0;
+}
+
+#game-over-screen button {
+  margin-top: 10px;
+}
