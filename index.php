@@ -1,16 +1,12 @@
 <?php
-// Roteamento básico
+// Roteamento básico (versão mais robusta)
 $request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$script_dir = dirname($_SERVER['SCRIPT_NAME']);
-$uri = substr($request_uri, strlen($script_dir));
+$script_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+$base_path = $script_dir === '/' ? '' : $script_dir;
+$uri = '/' . trim(substr($request_uri, strlen($base_path)), '/');
 
-if ($uri === '' || $uri === '/') {
-  $uri = '/';
-} elseif ($uri === '/save') {
-  // Mantém /save
-} else {
-  $uri = rtrim($uri, '/');
-}
+if ($uri === '//') $uri = '/';
+if ($uri === '') $uri = '/';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
