@@ -1,8 +1,8 @@
 [
     {
         "name": "Anonimo",
-        "score": 83,
-        "date": "2025-10-15 18:59"
+        "score": 67,
+        "date": "2025-10-15 19:34"
     },
     {
         "name": "Gabriel",
@@ -13,5 +13,10 @@
         "name": "TESTE",
         "score": 54,
         "date": "2025-10-15 18:43"
+    },
+    {
+        "name": "teste",
+        "score": 6,
+        "date": "2025-10-15 20:30"
     }
 ]
