@@ -23,7 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Lista de imagens com caminhos relativos ao BASE
   const imagePaths = {
-    playerRun: BASE + '/assets/sprites/personagem_correndo.png',
+    playerRun1: BASE + '/assets/sprites/personagem_correndo.png',
+    playerRun2: BASE + '/assets/sprites/personagem_correndo2.png',
+    playerRun3: BASE + '/assets/sprites/personagem_correndo3.png',
+    playerRun4: BASE + '/assets/sprites/personagem_correndo4.png',
     playerJump: BASE + '/assets/sprites/personagem_pulando.png',
     playerDuck: BASE + '/assets/sprites/personagem_agachado.png',
     ghost1: BASE + '/assets/sprites/fantasma_correndo.png',
@@ -238,14 +241,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const effectiveScroll = gameSpeed * slowFactor * speedMult
 
-    player.height = player.ducking ? duckHeight : normalHeight
     if (!player.jumping) {
-      player.y = groundY - player.height
+      player.y = groundY - normalHeight
     } else {
       player.velocityY += GAME_CONFIG.PLAYER_GRAVITY * (delta / 16.67)
       player.y += player.velocityY * (delta / 16.67)
-      if (player.y >= groundY - player.height) {
-        player.y = groundY - player.height
+      if (player.y >= groundY - normalHeight) {
+        player.y = groundY - normalHeight
         player.jumping = false
         player.velocityY = 0
       }
@@ -352,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             type: 'speed',
             timeLeft: GAME_CONFIG.POWERUP_SPEED_BOOST_DURATION,
           }
-        } else if (p.type === 'shield') {
+        } else if (p.type === 'speed') {
           shieldActive = true
         }
         slowTimer = 0
@@ -393,13 +395,23 @@ document.addEventListener('DOMContentLoaded', () => {
       groundHeight,
     )
 
-    // Jogador
-    let playerImg = player.jumping
-      ? images.playerJump
-      : player.ducking
-      ? images.playerDuck
-      : images.playerRun
-    ctx.drawImage(playerImg, player.x, player.y, player.width, player.height)
+    // Jogador com animação de corrida
+    const runImages = [
+      images.playerRun1,
+      images.playerRun2,
+      images.playerRun3,
+      images.playerRun4,
+    ]
+    let playerImg
+    if (player.jumping) {
+      playerImg = images.playerJump
+    } else if (player.ducking) {
+      playerImg = images.playerDuck
+    } else {
+      const runFrameIndex = Math.floor(frame / 5) % 4 // Ciclo a cada 5 frames para animação suave
+      playerImg = runImages[runFrameIndex]
+    }
+    ctx.drawImage(playerImg, player.x, player.y, player.width, normalHeight)
 
     // Fantasma
     let ghostImg = Math.floor(frame) % 20 < 10 ? images.ghost1 : images.ghost2
@@ -560,11 +572,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function checkCollision(a, b) {
+    let effectiveY = a.y
+    let effectiveHeight = normalHeight // Padrão
+
+    if (a.ducking) {
+      // Ajusta colisão para "abaixar" sem mudar visual: move topo para baixo e reduz altura
+      effectiveY = a.y + (normalHeight - duckHeight)
+      effectiveHeight = duckHeight
+    }
+
     return (
       a.x < b.x + b.width &&
       a.x + a.width > b.x &&
-      a.y < b.y + b.height &&
-      a.y + a.height > b.y
+      effectiveY < b.y + b.height &&
+      effectiveY + effectiveHeight > b.y
     )
   }
 })
