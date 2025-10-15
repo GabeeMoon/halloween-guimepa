@@ -1,3 +1,5 @@
+// assets/js/main.js
+// main.js — Lógica do jogo + efeitos visuais aprimorados para power-ups
 document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('game-canvas')
   const ctx = canvas.getContext('2d')
@@ -17,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const highObsY = groundY - normalHeight - highObsHeight + 50 // Ajuste para colidir com cabeça
   const powerupSize = 30
 
-  // Carregar imagens
+  // Carregar imagens (usamos uma imagem fixa por tipo para evitar piscar)
   const images = {
     playerRun: loadImage('assets/sprites/personagem_correndo.png'),
     playerJump: loadImage('assets/sprites/personagem_pulando.png'),
@@ -28,10 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     obsLow: loadImage('assets/sprites/obstaculo_baixo.png'),
     bg: loadImage('assets/sprites/fundo.png'),
     ground: loadImage('assets/sprites/chao.png'),
-    powerSpeed1: loadImage('assets/sprites/powerup_velocidade.png'),
-    powerSpeed2: loadImage('assets/sprites/powerup_velocidade2.png'),
-    powerShield1: loadImage('assets/sprites/powerup_escudo.png'),
-    powerShield2: loadImage('assets/sprites/powerup_escudo2.png'),
+    powerSpeed: loadImage('assets/sprites/powerup_velocidade.png'),
+    powerShield: loadImage('assets/sprites/powerup_escudo.png'),
   }
 
   function loadImage(src) {
@@ -74,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   let shieldActive = false
   let powerupActive = null
+  // slowTimer usado na mesma unidade que você tinha: decrementado por (delta/16.67)
+  // valor 90 = ~1.5s (90 * 16.67ms ≈ 1500ms)
   let slowTimer = 0
   let frame = 0
   let lastObstacle = 50 // Iniciar com delay para evitar spawn imediato
@@ -143,7 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if ((keys['ArrowUp'] || keys[' ']) && !player.jumping) {
       player.jumping = true
       player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY
-      jumpSound.play()
+      // reproduzir som — leve proteção para não estourar se arquivo não carregou
+      try {
+        jumpSound.play()
+      } catch (e) {}
       keys['ArrowUp'] = false
       keys[' '] = false
     }
@@ -151,15 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateGame(delta) {
-    // Atualizar pontuação
+    // Atualizar pontuação (mesma lógica: 1 ponto por segundo)
     score += delta / 1000
     if (score < 0) score = 0
     scoreDisplay.textContent = Math.floor(score)
 
-    // Aumentar velocidade
+    // Aumentar velocidade com o tempo
     gameSpeed += GAME_CONFIG.GAME_SPEED_INCREASE * (delta / 16.67)
 
-    // Fator de lentidão
+    // slowTimer (mesma unidade que antes)
     let slowFactor = 1
     if (slowTimer > 0) {
       slowTimer -= delta / 16.67
@@ -167,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
       slowFactor = 0.5
     }
 
-    // Power-up ativo
+    // Power-up ativo (usa timeLeft em ms; decrementa por delta — compatível com config)
     let speedMult = 1
     if (powerupActive) {
       powerupActive.timeLeft -= delta
@@ -180,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const effectiveScroll = gameSpeed * slowFactor * speedMult
 
-    // Atualizar jogador
+    // Atualizar jogador (pulo / gravidade)
     player.height = player.ducking ? duckHeight : normalHeight
     if (!player.jumping) {
       player.y = groundY - player.height
@@ -194,22 +199,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Lógica para o fantasma: Correção para evitar bugs (clamp posição mínima, ajuste relativeSpeed)
+    // Lógica para o fantasma: manter comportamento anterior + correções
     let relativeSpeed =
       gameSpeed * (GAME_CONFIG.GHOST_SPEED_FACTOR - slowFactor * speedMult)
-    relativeSpeed = Math.max(relativeSpeed, -gameSpeed * 0.1) // Evitar afastamento muito rápido
+    // evitar que relativeSpeed cause movimento exagerado para trás (mantemos clamp similar ao original)
+    relativeSpeed = Math.max(relativeSpeed, -gameSpeed * 0.1)
     ghost.x += relativeSpeed * (delta / 16.67)
+    // Não permitir sumir completamente
     if (ghost.x < 0 - ghostWidth) {
-      ghost.x = 0 - ghostWidth // Não deixar sumir completamente
+      ghost.x = 0 - ghostWidth
     }
 
-    // Fundo e chão
+    // Fundo e chão (wrap)
     bgX -= effectiveScroll * 0.5 * (delta / 16.67)
     if (bgX <= -bgWidth) bgX += bgWidth
     groundX -= effectiveScroll * (delta / 16.67)
     if (groundX <= -groundWidth) groundX += groundWidth
 
-    // Gerar obstáculos: Melhoria - spawn mais espaçado, evitar overlap
+    // Gerar obstáculos: mantemos spawn baseado em frame e minSpawnDist do original (para evitar spawn muito próximo com velocidade alta)
     frame += delta / 16.67
     const minSpawnDist =
       GAME_CONFIG.OBSTACLE_SPAWN_RATE_MIN +
@@ -222,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const type = Math.random() < 0.5 ? 'low' : 'high'
       const obsY = type === 'low' ? groundY - lowObsHeight : highObsY
       const obsH = type === 'low' ? lowObsHeight : highObsHeight
-      // Verificar se não overlap com último obstáculo
+      // Evitar overlap com último obstáculo
       const lastObs = obstacles[obstacles.length - 1]
       let spawnX = canvas.width + Math.random() * 100
       if (lastObs && spawnX - lastObs.x < obsWidth * 2) {
@@ -238,12 +245,11 @@ document.addEventListener('DOMContentLoaded', () => {
       lastObstacle = frame
     }
 
-    // Gerar power-ups: Melhoria - spawn mais frequente, evitar overlap com obstáculos
+    // Gerar power-ups: usamos chance por frame (como original) e delay mínimo (frame - lastPowerup)
     if (
       Math.random() < GAME_CONFIG.POWERUP_SPAWN_CHANCE * (delta / 16.67) &&
       frame - lastPowerup > 100
     ) {
-      // Delay mínimo entre powerups
       const type = Math.random() < 0.5 ? 'speed' : 'shield'
       const puY = groundY - normalHeight / 2 - Math.random() * 100
       let spawnX = canvas.width + Math.random() * 100
@@ -251,9 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let overlap = obstacles.some(
         (o) => Math.abs(spawnX - o.x) < powerupSize + obsWidth,
       )
-      if (overlap) {
-        spawnX += powerupSize + obsWidth
-      }
+      if (overlap) spawnX += powerupSize + obsWidth
       powerups.push({
         x: spawnX,
         y: puY,
@@ -270,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     powerups.forEach((p) => (p.x -= effectiveScroll * (delta / 16.67)))
     powerups = powerups.filter((p) => p.x > -p.width)
 
-    // Colisões com obstáculos
+    // Colisões com obstáculos (mesma lógica: escudo, slowTimer e penalidade de score)
     for (let i = 0; i < obstacles.length; i++) {
       if (checkCollision(player, obstacles[i])) {
         if (shieldActive) {
@@ -279,12 +283,15 @@ document.addEventListener('DOMContentLoaded', () => {
           if (slowTimer > 0) {
             // Se bater novamente enquanto lento, game over imediato
             running = false
-            gameOverSound.play()
+            try {
+              gameOverSound.play()
+            } catch (e) {}
             endGame()
             return
           } else {
             score -= 2
-            slowTimer = 90 // 1.5 segundos
+            slowTimer = 90 // ~1.5s como antes
+            if (score < 0) score = 0
           }
         }
         obstacles.splice(i, 1)
@@ -292,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Colisões com power-ups
+    // Colisões com power-ups (mantém incrementos e efeitos, reseta slowTimer)
     for (let i = 0; i < powerups.length; i++) {
       if (checkCollision(player, powerups[i])) {
         powerupSound.play()
@@ -301,12 +308,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (p.type === 'speed') {
           powerupActive = {
             type: 'speed',
-            timeLeft: GAME_CONFIG.POWERUP_SPEED_BOOST_DURATION,
+            timeLeft: GAME_CONFIG.POWERUP_SPEED_BOOST_DURATION, // em ms
           }
         } else if (p.type === 'shield') {
           shieldActive = true
         }
-        // Reset slowTimer ao pegar powerup
+        // Reset slowTimer ao pegar powerup (mesma lógica do seu main.js)
         slowTimer = 0
         powerups.splice(i, 1)
         break
@@ -316,7 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fim de jogo se fantasma alcançar
     if (ghost.x + ghost.width >= player.x) {
       running = false
-      gameOverSound.play()
+      try {
+        gameOverSound.play()
+      } catch (e) {}
       endGame()
     }
   }
@@ -324,11 +333,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Fundo
+    // Fundo (duas cópias para loop)
     ctx.drawImage(images.bg, bgX, 0, bgWidth, canvas.height)
     ctx.drawImage(images.bg, bgX + bgWidth, 0, bgWidth, canvas.height)
 
-    // Chão
+    // Chão (duas cópias)
     ctx.drawImage(
       images.ground,
       groundX,
@@ -344,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
       groundHeight,
     )
 
-    // Jogador
+    // Jogador (sprites conforme estado)
     let playerImg = player.jumping
       ? images.playerJump
       : player.ducking
@@ -352,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : images.playerRun
     ctx.drawImage(playerImg, player.x, player.y, player.width, player.height)
 
-    // Fantasma
+    // Fantasma (animação simples alternando imagens)
     let ghostImg = Math.floor(frame) % 20 < 10 ? images.ghost1 : images.ghost2
     ctx.drawImage(ghostImg, ghost.x, ghost.y, ghost.width, ghost.height)
 
@@ -362,38 +371,110 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.drawImage(img, o.x, o.y, o.width, o.height)
     })
 
-    // Power-ups
+    // Power-ups (fixos, sem piscar — com leve efeito visual)
     powerups.forEach((p) => {
-      let img =
-        p.type === 'speed'
-          ? Math.floor(frame) % 20 < 10
-            ? images.powerSpeed1
-            : images.powerSpeed2
-          : Math.floor(frame) % 20 < 10
-          ? images.powerShield1
-          : images.powerShield2
+      let img = p.type === 'speed' ? images.powerSpeed : images.powerShield
+
+      // brilho radial por trás para destacar o powerup
+      ctx.save()
+      const rg = ctx.createRadialGradient(
+        p.x + p.width / 2,
+        p.y + p.height / 2,
+        p.width * 0.1,
+        p.x + p.width / 2,
+        p.y + p.height / 2,
+        Math.max(p.width, p.height),
+      )
+      if (p.type === 'speed') {
+        rg.addColorStop(0, 'rgba(255, 235, 150, 0.9)')
+        rg.addColorStop(1, 'rgba(255, 235, 150, 0)')
+      } else {
+        rg.addColorStop(0, 'rgba(150, 220, 255, 0.9)')
+        rg.addColorStop(1, 'rgba(150, 220, 255, 0)')
+      }
+      ctx.fillStyle = rg
+      ctx.fillRect(
+        p.x - p.width * 0.5,
+        p.y - p.height * 0.5,
+        p.width * 2,
+        p.height * 2,
+      )
+      // sombra extra
+      ctx.shadowColor =
+        p.type === 'speed' ? 'rgba(255,215,0,0.8)' : 'rgba(0,191,255,0.8)'
+      ctx.shadowBlur = p.type === 'speed' ? 18 : 22
       ctx.drawImage(img, p.x, p.y, p.width, p.height)
+      ctx.restore()
     })
 
     // Efeitos visuais
+
+    // Efeito power-up velocidade: rastro / brilho de tela (mantém a jogabilidade)
     if (powerupActive && powerupActive.type === 'speed') {
-      ctx.globalAlpha = 0.5
-      ctx.fillStyle = 'yellow'
-      ctx.fillRect(player.x, player.y, player.width, player.height)
-      ctx.globalAlpha = 1
-    }
-    if (shieldActive) {
-      ctx.beginPath()
-      ctx.arc(
-        player.x + player.width / 2,
-        player.y + player.height / 2,
-        Math.max(player.width, player.height) / 2 + 10,
-        0,
-        2 * Math.PI,
+      // leve overlay amarelado para sensação de velocidade
+      ctx.save()
+      // intensidade pulsante baseada no timeLeft (mais forte no início)
+      const intensity = Math.min(
+        0.45,
+        0.25 +
+          (powerupActive.timeLeft / GAME_CONFIG.POWERUP_SPEED_BOOST_DURATION) *
+            0.2,
       )
-      ctx.strokeStyle = 'blue'
-      ctx.lineWidth = 2
+      ctx.globalAlpha = intensity
+      ctx.fillStyle = 'rgba(255, 200, 50, 1)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.restore()
+
+      // opcional: trail do jogador (desenhar retângulos translúcidos atrás do jogador)
+      ctx.save()
+      ctx.globalAlpha = 0.12
+      for (let t = 0; t < 4; t++) {
+        ctx.fillRect(
+          player.x - (t + 1) * 10,
+          player.y + t * 2,
+          player.width,
+          player.height,
+        )
+      }
+      ctx.restore()
+    }
+
+    // Escudo aprimorado: gradiente + pulsação suave
+    if (shieldActive) {
+      const radius = Math.max(player.width, player.height) / 2 + 12
+      const cx = player.x + player.width / 2
+      const cy = player.y + player.height / 2
+
+      const gradient = ctx.createRadialGradient(
+        cx,
+        cy,
+        radius * 0.4,
+        cx,
+        cy,
+        radius,
+      )
+      gradient.addColorStop(0, 'rgba(0,191,255,0.55)')
+      gradient.addColorStop(1, 'rgba(0,0,255,0.15)')
+
+      ctx.save()
+      // pulsação: varia entre 0.7 e 1.1 alpha dependendo do frame
+      const pulse = 0.85 + Math.sin(frame / 8) * 0.15
+      ctx.globalAlpha = pulse
+      ctx.fillStyle = gradient
+      ctx.shadowColor = 'rgba(0,191,255,0.9)'
+      ctx.shadowBlur = 18
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius, 0, 2 * Math.PI)
+      ctx.fill()
+
+      // borda brilhante
+      ctx.globalAlpha = 1
+      ctx.strokeStyle = 'rgba(0, 230, 255, 0.9)'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(cx, cy, radius + 2, 0, 2 * Math.PI)
       ctx.stroke()
+      ctx.restore()
     }
   }
 
@@ -412,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
       location.reload() // Reinicia a página
     })
 
-    // Envia o score e atualiza o ranking
+    // Envia o score e atualiza o ranking (mesma rota '/save' do seu Controller)
     fetch('save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -435,12 +516,14 @@ document.addEventListener('DOMContentLoaded', () => {
                       .join('')}
                 </ol>
             `
-        gameOverScreen.querySelector('h3').outerHTML = top10Html
+        // Substitui o <h3> "Carregando Top 10..." pelo ranking
+        const h3 = gameOverScreen.querySelector('h3')
+        if (h3) h3.outerHTML = top10Html
       })
       .catch((error) => {
         console.error('Erro ao salvar/carregar score:', error)
-        gameOverScreen.querySelector('h3').textContent =
-          'Erro ao carregar Top 10: ' + error.message
+        const h3 = gameOverScreen.querySelector('h3')
+        if (h3) h3.textContent = 'Erro ao carregar Top 10: ' + error.message
       })
   }
 
