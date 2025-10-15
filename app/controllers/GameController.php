@@ -26,14 +26,26 @@ class GameController
       return;
     }
 
-    $data = json_decode(file_get_contents('php://input'), true);
-    if (!$data) {
+    $raw = file_get_contents('php://input');
+    if ($raw === false || $raw === '') {
       http_response_code(400);
-      echo json_encode(['error' => 'JSON inválido']);
+      echo json_encode(['error' => 'Corpo da requisição vazio']);
+      return;
+    }
+
+    $data = json_decode($raw, true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+      http_response_code(400);
+      echo json_encode(['error' => 'JSON inválido: ' . json_last_error_msg()]);
       return;
     }
 
     $playerName = trim($data['playerName'] ?? 'Anônimo');
+    // Sanitização básica: remover tags e limitar tamanho
+    $playerName = strip_tags($playerName);
+    $playerName = mb_substr($playerName, 0, 32); // limite de 32 caracteres
+    if ($playerName === '') $playerName = 'Anônimo';
+
     $score = (int) ($data['score'] ?? 0);
 
     if ($score < 0) {
