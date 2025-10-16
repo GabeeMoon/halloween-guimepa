@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleInput() {
     if ((keys['ArrowUp'] || keys[' ']) && !player.jumping) {
       player.jumping = true
-      player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY
+      player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY // Ajustado para pulo mais baixo
       try {
         jumpSound.play()
       } catch (e) {}
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             type: 'speed',
             timeLeft: GAME_CONFIG.POWERUP_SPEED_BOOST_DURATION,
           }
-        } else if (p.type === 'speed') {
+        } else if (p.type === 'shield') {
           shieldActive = true
         }
         slowTimer = 0
