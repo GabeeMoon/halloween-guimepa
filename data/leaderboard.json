@@ -1,37 +1,22 @@
 [
-    {
-        "name": "Anonimo",
-        "score": 77,
-        "date": "2025-10-16 15:58"
-    },
-    {
-        "name": "TESTE 01",
-        "score": 64,
-        "date": "2025-10-16 13:32"
-    },
-    {
-        "name": "Gabriel",
-        "score": 56,
-        "date": "2025-10-15 18:25"
-    },
-    {
-        "name": "TESTE",
-        "score": 54,
-        "date": "2025-10-15 18:43"
-    },
-    {
-        "name": "Mateus",
-        "score": 21,
-        "date": "2025-10-16 13:38"
-    },
-    {
-        "name": "dasdas",
-        "score": 19,
-        "date": "2025-10-15 21:56"
-    },
-    {
-        "name": "teste",
-        "score": 3,
-        "date": "2025-10-16 13:55"
-    }
+  {
+    "name": "Gabriel",
+    "score": 500,
+    "date": "2025-10-20 18:36"
+  },
+  {
+    "name": "Guido",
+    "score": 123,
+    "date": "2025-10-27 21:37"
+  },
+  {
+    "name": "Madruga",
+    "score": 87,
+    "date": "2025-10-16 16:38"
+  },
+  {
+    "name": "Mateus",
+    "score": 21,
+    "date": "2025-10-16 13:38"
+  }
 ]
