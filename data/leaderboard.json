@@ -1,22 +1,27 @@
 [
-  {
-    "name": "Gabriel",
-    "score": 500,
-    "date": "2025-10-20 18:36"
-  },
-  {
-    "name": "Guido",
-    "score": 123,
-    "date": "2025-10-27 21:37"
-  },
-  {
-    "name": "Madruga",
-    "score": 87,
-    "date": "2025-10-16 16:38"
-  },
-  {
-    "name": "Mateus",
-    "score": 21,
-    "date": "2025-10-16 13:38"
-  }
+    {
+        "name": "Gabriel",
+        "score": 500,
+        "date": "2025-10-20 18:36"
+    },
+    {
+        "name": "Guido",
+        "score": 123,
+        "date": "2025-10-27 21:37"
+    },
+    {
+        "name": "Madruga",
+        "score": 87,
+        "date": "2025-10-16 16:38"
+    },
+    {
+        "name": "Anonimo",
+        "score": 35,
+        "date": "2025-10-28 15:04"
+    },
+    {
+        "name": "Mateus",
+        "score": 21,
+        "date": "2025-10-16 13:38"
+    }
 ]

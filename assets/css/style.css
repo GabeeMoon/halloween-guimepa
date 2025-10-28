@@ -103,3 +103,37 @@ body {
 #game-over-screen button {
   margin-top: 10px;
 }
+.leaderboard {
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 16px;
+  padding: 16px;
+  color: #fff;
+  text-align: center;
+  width: 300px;
+  margin: 0 auto;
+  box-shadow: 0 0 20px orange;
+}
+
+.leaderboard table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.leaderboard th,
+.leaderboard td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.leaderboard .highlight {
+  background: linear-gradient(90deg, orange, darkorange);
+  font-weight: bold;
+}
+
+.leaderboard-pagination {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}

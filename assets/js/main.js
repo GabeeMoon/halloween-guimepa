@@ -21,6 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const highObsY = groundY - normalHeight - highObsHeight + 50
   const powerupSize = 30
 
+  // --- Halloween effects (particles + filter)
+  let pumpkinParticles = [] // each: {x,y,size,speedY,alpha,rot,rotSpeed,life}
+  let halloweenFilterProgress = 0 // 0..1
+  let endEffectsRunning = false
+
   // Lista de imagens com caminhos relativos ao BASE
   const imagePaths = {
     playerRun1: BASE + '/assets/sprites/personagem_correndo.png',
@@ -187,6 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
     lastPowerup = 0
     bgX = 0
     groundX = 0
+    // reset end effects
+    pumpkinParticles = []
+    halloweenFilterProgress = 0
+    endEffectsRunning = false
     running = true
   }
 
@@ -519,15 +528,167 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.stroke()
       ctx.restore()
     }
+
+    // If end effects are running, draw pumpkins on top of the scene
+    if (endEffectsRunning && pumpkinParticles.length) {
+      pumpkinParticles.forEach((p) => {
+        ctx.save()
+        ctx.translate(p.x, p.y)
+        ctx.rotate(p.rot)
+        ctx.globalAlpha = p.alpha
+        // simple pumpkin drawing (circle + lines) so no external asset required
+        ctx.beginPath()
+        ctx.fillStyle = `rgba(255, ${120 + Math.floor(p.size)}, 0, 1)`
+        ctx.ellipse(0, 0, p.size, p.size * 0.8, 0, 0, Math.PI * 2)
+        ctx.fill()
+        // stem
+        ctx.fillStyle = 'rgba(60,40,0,1)'
+        ctx.fillRect(-p.size * 0.1, -p.size * 0.9, p.size * 0.2, p.size * 0.25)
+        // rifts
+        ctx.strokeStyle = 'rgba(160,80,0,0.6)'
+        ctx.lineWidth = Math.max(1, p.size * 0.08)
+        ctx.beginPath()
+        ctx.moveTo(-p.size * 0.3, -p.size * 0.1)
+        ctx.quadraticCurveTo(0, -p.size * 0.15, 0, 0)
+        ctx.stroke()
+        ctx.restore()
+      })
+    }
   }
 
+  // animate end effects: overlay + particles (separate loop after game over)
+  function startEndEffectsLoop() {
+    if (endEffectsRunning) return
+    endEffectsRunning = true
+    function step() {
+      // draw base scene first
+      draw()
+      // progressive filter
+      halloweenFilterProgress = Math.min(1, halloweenFilterProgress + 0.01)
+      ctx.save()
+      // dark vignette
+      ctx.fillStyle = `rgba(10, 6, 12, ${0.55 * halloweenFilterProgress})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      // orange glow
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.fillStyle = `rgba(255, 100, 0, ${0.18 * halloweenFilterProgress})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.restore()
+
+      // spawn new pumpkins gradually (limit total)
+      if (pumpkinParticles.length < 80 && Math.random() < 0.5) {
+        spawnPumpkin()
+      }
+
+      // update particles
+      pumpkinParticles.forEach((p) => {
+        p.y -= p.speedY
+        p.x += Math.sin(p.life * 0.05) * 0.5 // slight horizontal wobble
+        p.rot += p.rotSpeed
+        p.alpha -= 0.0025
+        p.life -= 1
+      })
+      pumpkinParticles = pumpkinParticles.filter(
+        (p) => p.alpha > 0 && p.life > 0,
+      )
+
+      requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }
+
+  function spawnPumpkin() {
+    pumpkinParticles.push({
+      x: Math.random() * canvas.width,
+      y: canvas.height + (10 + Math.random() * 80),
+      size: 6 + Math.random() * 18,
+      speedY: 0.6 + Math.random() * 2.2,
+      alpha: 0.9 + Math.random() * 0.15,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.06,
+      life: 200 + Math.random() * 200,
+    })
+  }
+
+  // -------- MELHORIA: RANKING COM PAGINAÇÃO E DESTAQUE --------
+  // Helper to render paginated ranking inside gameOverScreen
+  function renderRankingList(
+    data,
+    playerNameToHighlight,
+    containerId = 'ranking-container',
+  ) {
+    const perPage = 5
+    let currentPage = 0
+    const totalPages = Math.max(1, Math.ceil(data.length / perPage))
+
+    // ensure sorted by score desc
+    data.sort((a, b) => (b.score || 0) - (a.score || 0))
+
+    function renderPage() {
+      const start = currentPage * perPage
+      const pageData = data.slice(start, start + perPage)
+
+      const listHtml = pageData
+        .map((s, idx) => {
+          const isPlayer =
+            (s.name || '').trim() === (playerNameToHighlight || '').trim()
+          const pos = start + idx + 1
+          return `<li style="padding:6px 8px; margin:4px 0; list-style:decimal; ${
+            isPlayer
+              ? 'background: linear-gradient(90deg, #ffda6b, #ffb347); color:#111; font-weight:bold; border-radius:6px;'
+              : 'background: rgba(255,255,255,0.03); color:#fff; border-radius:4px;'
+          }">${escapeHtml(s.name || 'Anonimo')}: ${Number(s.score || 0)}</li>`
+        })
+        .join('')
+
+      const container = document.getElementById(containerId)
+      if (!container) return
+      container.innerHTML = `
+        <div style="max-width:360px; width:100%; margin:0 auto; text-align:center;">
+          <h3 style="margin:6px 0 8px 0;">Ranking</h3>
+          <ol style="padding-left:18px; margin:0;">${listHtml}</ol>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <button id="rb-prev" ${
+              currentPage === 0 ? 'disabled' : ''
+            } style="padding:6px 10px; cursor:pointer;">Anterior</button>
+            <span>Pg ${currentPage + 1}/${totalPages}</span>
+            <button id="rb-next" ${
+              currentPage === totalPages - 1 ? 'disabled' : ''
+            } style="padding:6px 10px; cursor:pointer;">Próxima</button>
+          </div>
+        </div>
+      `
+
+      const prevBtn = document.getElementById('rb-prev')
+      const nextBtn = document.getElementById('rb-next')
+      prevBtn &&
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 0) {
+            currentPage--
+            renderPage()
+          }
+        })
+      nextBtn &&
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < totalPages - 1) {
+            currentPage++
+            renderPage()
+          }
+        })
+    }
+
+    renderPage()
+  }
+
+  // -------- OVERRIDE / ADAPTATION: endGame para incluir ranking + efeitos ----------
   function endGame() {
-    // Mostrar tela
+    // Mostrar tela (adiciona container para ranking)
     gameOverScreen.innerHTML = `
             <h2>Game Over</h2>
             <p>Sua pontuação: ${Math.floor(score)}</p>
-            <h3>Carregando Top 10...</h3>
-            <button id="restart-button">Tentar de Novo</button>
+            <h3 id="saving-text">Salvando e carregando Ranking...</h3>
+            <div id="ranking-container" style="width:100%; display:flex; justify-content:center; margin-top:10px;"></div>
+            <button id="restart-button" style="margin-top:12px;">Tentar de Novo</button>
         `
     gameOverScreen.style.display = 'flex'
 
@@ -535,6 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
       location.reload()
     })
 
+    // salvar e buscar ranking (mesma rota /save que já tens)
     fetch((BASE || '') + '/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -547,28 +709,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return res.json()
       })
       .then((data) => {
-        console.log('Top scores carregados:', data)
-        const top10Html = `
-                <h3>Top 10</h3>
-                <ol>
-                    ${data
-                      .map(
-                        (s) =>
-                          `<li>${escapeHtml(s.name || 'Anonimo')}: ${Number(
-                            s.score || 0,
-                          )}</li>`,
-                      )
-                      .join('')}
-                </ol>
-            `
-        const h3 = gameOverScreen.querySelector('h3')
-        if (h3) h3.outerHTML = top10Html
+        // data deve ser array ordenado (retornado pelo backend)
+        try {
+          renderRankingList(
+            Array.isArray(data) ? data : [],
+            playerName,
+            'ranking-container',
+          )
+        } catch (e) {
+          console.error('Erro ao renderizar ranking:', e)
+        }
+        const savingText = document.getElementById('saving-text')
+        if (savingText) savingText.textContent = ''
       })
       .catch((error) => {
         console.error('Erro ao salvar/carregar score:', error)
         const h3 = gameOverScreen.querySelector('h3')
         if (h3) h3.textContent = 'Erro ao carregar Top 10: ' + error.message
       })
+
+    // start halloween end effects (overlay + pumpkins)
+    // populate an initial burst so it looks good immediately
+    for (let i = 0; i < 18; i++) spawnPumpkin()
+    startEndEffectsLoop()
+    try {
+      gameOverSound.play()
+    } catch (e) {}
   }
 
   function checkCollision(a, b) {

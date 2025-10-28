@@ -10,6 +10,25 @@
   </div>
 
   <div id="game-over-screen"></div>
+  <div id="leaderboard-container" class="leaderboard">
+    <h2>🏆 Ranking</h2>
+    <table id="leaderboard-table">
+      <thead>
+        <tr>
+          <th>Posição</th>
+          <th>Jogador</th>
+          <th>Pontos</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="leaderboard-pagination">
+      <button id="prevPage">Anterior</button>
+      <span id="pageInfo"></span>
+      <button id="nextPage">Próxima</button>
+    </div>
+  </div>
+
 </div>
 
 <?php include __DIR__ . '/partials/footer.php'; ?>
