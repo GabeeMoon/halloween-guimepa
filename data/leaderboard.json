@@ -1,32 +1,27 @@
 [
     {
+        "name": "Vitor",
+        "score": 96,
+        "date": "2025-10-30 20:18:24"
+    },
+    {
         "name": "Gabriel",
-        "score": 128,
-        "date": "2025-10-29 17:19"
+        "score": 74,
+        "date": "2025-10-30 19:48:36"
+    },
+    {
+        "name": "Matthews",
+        "score": 59,
+        "date": "2025-10-30 20:25:21"
     },
     {
         "name": "leo",
-        "score": 87,
-        "date": "2025-10-29 17:18"
+        "score": 21,
+        "date": "2025-10-30 20:23:26"
     },
     {
-        "name": "Vitor",
-        "score": 78,
-        "date": "2025-10-30 12:32"
-    },
-    {
-        "name": "teste2313",
-        "score": 53,
-        "date": "2025-10-29 21:50"
-    },
-    {
-        "name": "TARCISIO",
-        "score": 39,
-        "date": "2025-10-29 17:17"
-    },
-    {
-        "name": "Teste",
-        "score": 24,
-        "date": "2025-10-29 21:10"
+        "name": "Pedroso",
+        "score": 7,
+        "date": "2025-10-30 18:14"
     }
 ]

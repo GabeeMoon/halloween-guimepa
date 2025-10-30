@@ -1,18 +1,18 @@
 // assets/js/Config.js
 const GAME_CONFIG = {
   // Física do jogador
-  PLAYER_JUMP_VELOCITY: 13,
+  PLAYER_JUMP_VELOCITY: 14,
   PLAYER_GRAVITY: 0.7,
 
   // Velocidade do jogo
   INITIAL_GAME_SPEED: 8,
-  GAME_SPEED_INCREASE: 0.004,
+  GAME_SPEED_INCREASE: 0.005,
 
   // Pontuação
   SCORE_MULTIPLIER: 2, // Aumentado: 2 pontos por segundo (era 1)
 
   // Fantasma perseguidor
-  GHOST_DISTANCE_BEHIND: 300,
+  GHOST_DISTANCE_BEHIND: 200,
   GHOST_SPEED_FACTOR: 0.98,
 
   // Spawn de obstáculos
@@ -27,7 +27,7 @@ const GAME_CONFIG = {
   // Penalidade de colisão
   COLLISION_SLOW_DURATION_NORMAL: 90,
   COLLISION_SLOW_DURATION_SPEED: 60, // Reduzido quando com powerup de velocidade (mais vantajoso)
-  COLLISION_MARGIN: 5,
+  COLLISION_MARGIN: 4,
 
   // Slow factor (redução de velocidade na colisão)
   SLOW_FACTOR: 0.5,

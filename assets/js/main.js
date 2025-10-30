@@ -283,7 +283,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const handleInput = () => {
     if ((keys['ArrowUp'] || keys[' ']) && !player.jumping) {
       player.jumping = true
-      player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY
+      // Se estiver abaixado, pulo mais baixo (Ex: metade da altura padrão)
+      if (player.ducking) {
+        player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY * 0.7
+      } else {
+        player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY
+      }
       try {
         jumpSound.currentTime = 0
         jumpSound.play()
@@ -293,6 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     player.ducking = keys['ArrowDown'] && !player.jumping
   }
+
 
   const updateGame = (delta) => {
     // MODIFICADO: Pontuação aumentada (2 pontos por segundo)
