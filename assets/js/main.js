@@ -2,32 +2,47 @@
 document.addEventListener('DOMContentLoaded', () => {
   const BASE = window.BASE_URL || ''
 
-  // Canvas e contexto
+  // ===== CANVAS E CONTEXTO =====
   const canvas = document.getElementById('game-canvas')
   const ctx = canvas.getContext('2d')
   canvas.width = 800
   canvas.height = 400
 
-  // Constantes do jogo
-  const groundHeight = 50
-  const groundY = canvas.height
-  const normalHeight = 100
-  const duckHeight = 50
-  const playerWidth = 50
-  const ghostWidth = 50
-  const ghostHeight = 100
-  const obsWidth = 40
-  const lowObsHeight = 50
-  const highObsHeight = 150
-  const highObsY = groundY - normalHeight - highObsHeight + 50
-  const powerupSize = 30
+  // ===== CONSTANTES DO JOGO (Dimensões e Posições) =====
+  const GROUND_HEIGHT = 50
+  const GROUND_Y = canvas.height
+  const PLAYER_NORMAL_HEIGHT = 100
+  const PLAYER_DUCK_HEIGHT = 50
+  const PLAYER_WIDTH = 50
+  const PLAYER_X = 200
 
-  // Estado visual pós-gameover
+  const GHOST_WIDTH = 50
+  const GHOST_HEIGHT = 100
+
+  // Obstáculos (dimensões e posições calculadas corretamente)
+  const OBS_LOW_WIDTH = 40
+  const OBS_LOW_HEIGHT = 50
+  const OBS_LOW_Y = GROUND_Y - OBS_LOW_HEIGHT
+
+  const OBS_HIGH_WIDTH = 40
+  const OBS_HIGH_HEIGHT = 150
+  const OBS_HIGH_Y = GROUND_Y - PLAYER_NORMAL_HEIGHT - OBS_HIGH_HEIGHT + 50
+
+  const OBS_MID_WIDTH = 50
+  const OBS_MID_HEIGHT = 90
+  const OBS_MID_Y = GROUND_Y - OBS_MID_HEIGHT - 20
+
+  const POWERUP_SIZE = 30
+
+  const BG_WIDTH = 800
+  const GROUND_WIDTH = 800
+
+  // ===== ESTADO VISUAL PÓS-GAMEOVER (NOVO: com halloweenFilterProgress) =====
   let pumpkinParticles = []
   let halloweenFilterProgress = 0
   let endEffectsRunning = false
 
-  // Sprites
+  // ===== SPRITES =====
   const imagePaths = {
     playerRun1: `${BASE}/assets/sprites/personagem_correndo.png`,
     playerRun2: `${BASE}/assets/sprites/personagem_correndo2.png`,
@@ -37,10 +52,19 @@ document.addEventListener('DOMContentLoaded', () => {
     ghost2: `${BASE}/assets/sprites/fantasma_correndo2.png`,
     obsHigh: `${BASE}/assets/sprites/obstaculo_alto.png`,
     obsLow: `${BASE}/assets/sprites/obstaculo_baixo.png`,
+    obsMid1: `${BASE}/assets/sprites/obstaculo_medio.png`,
+    obsMid2: `${BASE}/assets/sprites/obstaculo_medio2.png`,
     bg: `${BASE}/assets/sprites/fundo.png`,
     ground: `${BASE}/assets/sprites/chao.png`,
     powerSpeed: `${BASE}/assets/sprites/powerup_velocidade.png`,
     powerShield: `${BASE}/assets/sprites/powerup_escudo.png`,
+  }
+
+  const imageSizes = {
+    obsLow: { w: OBS_LOW_WIDTH, h: OBS_LOW_HEIGHT },
+    obsHigh: { w: OBS_HIGH_WIDTH, h: OBS_HIGH_HEIGHT },
+    obsMid1: { w: OBS_MID_WIDTH, h: OBS_MID_HEIGHT },
+    obsMid2: { w: OBS_MID_WIDTH, h: OBS_MID_HEIGHT },
   }
 
   const images = {}
@@ -55,10 +79,16 @@ document.addEventListener('DOMContentLoaded', () => {
               resolve({ key, ok: true })
             }
             img.onerror = () => {
+              const size = imageSizes[key] || { w: 64, h: 64 }
               const fallback = document.createElement('canvas')
-              fallback.width = 64
-              fallback.height = 64
-              fallback.getContext('2d').fillRect(0, 0, 64, 64)
+              fallback.width = size.w
+              fallback.height = size.h
+              const fctx = fallback.getContext('2d')
+              fctx.fillStyle = '#666'
+              fctx.fillRect(0, 0, fallback.width, fallback.height)
+              fctx.strokeStyle = '#888'
+              fctx.lineWidth = 2
+              fctx.strokeRect(0, 0, fallback.width, fallback.height)
               images[key] = fallback
               resolve({ key, ok: false })
             }
@@ -67,20 +97,24 @@ document.addEventListener('DOMContentLoaded', () => {
       ),
     )
 
+  // ===== ÁUDIO =====
   const safeAudio = (src) => {
     try {
       return new Audio(src)
     } catch {
-      return { play: () => {} }
+      return { play: () => {}, pause: () => {}, currentTime: 0 }
     }
   }
 
-  // Sons (opcional)
   const jumpSound = safeAudio(`${BASE}/assets/sounds/pulo.mp3`)
   const gameOverSound = safeAudio(`${BASE}/assets/sounds/game_over.mp3`)
   const powerupSound = safeAudio(`${BASE}/assets/sounds/powerup.mp3`)
 
-  // DOM
+  // NOVA: Música de fundo (loop durante o jogo)
+  const bgMusic = safeAudio(`${BASE}/assets/sounds/background.mp3`)
+  bgMusic.loop = true
+
+  // ===== DOM =====
   const introScreen = document.getElementById('intro-screen')
   const introContinue = document.getElementById('intro-continue')
   const startScreen = document.getElementById('start-screen')
@@ -89,30 +123,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const gameOverScreen = document.getElementById('game-over-screen')
   const scoreDisplay = document.getElementById('score-display')
 
-  // Estado do jogo
+  // ===== ESTADO DO JOGO =====
   playerNameInput.value = localStorage.getItem('playerName') || ''
   let playerName = playerNameInput.value.trim() || ''
   let running = false
+  let paused = false
   let score = 0
   let gameSpeed = GAME_CONFIG.INITIAL_GAME_SPEED
   let obstacles = []
   let powerups = []
 
   let player = {
-    x: 200,
-    y: groundY - normalHeight,
-    width: playerWidth,
-    height: normalHeight,
+    x: PLAYER_X,
+    y: GROUND_Y - PLAYER_NORMAL_HEIGHT,
+    width: PLAYER_WIDTH,
+    height: PLAYER_NORMAL_HEIGHT,
     velocityY: 0,
     jumping: false,
     ducking: false,
   }
 
   let ghost = {
-    x: player.x - GAME_CONFIG.GHOST_DISTANCE_BEHIND,
-    y: groundY - ghostHeight,
-    width: ghostWidth,
-    height: ghostHeight,
+    x: PLAYER_X - GAME_CONFIG.GHOST_DISTANCE_BEHIND,
+    y: GROUND_Y - GHOST_HEIGHT,
+    width: GHOST_WIDTH,
+    height: GHOST_HEIGHT,
   }
 
   let shieldActive = false
@@ -124,8 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastTime = 0
   let bgX = 0
   let groundX = 0
-  const bgWidth = 800
-  const groundWidth = 800
+  let finalBgX = 0
+  let finalGroundX = 0
 
   const keys = {}
   document.addEventListener('keydown', (e) => (keys[e.key] = true))
@@ -137,24 +172,21 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
-      .replace(/'/g, '')
+      .replace(/'/g, '&#039;')
 
-  // Pré-carregar sprites e habilitar início
+  // ===== INICIALIZAÇÃO =====
   preloadImages(imagePaths).then(() => {
     startButton.disabled = false
   })
 
-  // Intro sempre ao carregar a página (sem localStorage de intro)
   introScreen.style.display = 'flex'
-  startScreen.style.display = 'none' // só mostra depois do “Entrar no Desafio”
-  // Fluxo: Intro -> Start -> Jogo
+  startScreen.style.display = 'none'
   introContinue?.addEventListener('click', () => {
     introScreen.style.display = 'none'
     startScreen.style.display = 'flex'
     playerNameInput.focus()
   })
 
-  // Início do jogo
   startButton.addEventListener('click', () => {
     playerName = playerNameInput.value.trim() || 'Anonimo'
     localStorage.setItem('playerName', playerName)
@@ -171,19 +203,19 @@ document.addEventListener('DOMContentLoaded', () => {
     obstacles = []
     powerups = []
     player = {
-      x: 200,
-      y: groundY - normalHeight,
-      width: playerWidth,
-      height: normalHeight,
+      x: PLAYER_X,
+      y: GROUND_Y - PLAYER_NORMAL_HEIGHT,
+      width: PLAYER_WIDTH,
+      height: PLAYER_NORMAL_HEIGHT,
       velocityY: 0,
       jumping: false,
       ducking: false,
     }
     ghost = {
-      x: player.x - GAME_CONFIG.GHOST_DISTANCE_BEHIND,
-      y: groundY - ghostHeight,
-      width: ghostWidth,
-      height: ghostHeight,
+      x: PLAYER_X - GAME_CONFIG.GHOST_DISTANCE_BEHIND,
+      y: GROUND_Y - GHOST_HEIGHT,
+      width: GHOST_WIDTH,
+      height: GHOST_HEIGHT,
     }
     shieldActive = false
     powerupActive = null
@@ -194,16 +226,55 @@ document.addEventListener('DOMContentLoaded', () => {
     bgX = 0
     groundX = 0
     pumpkinParticles = []
-    halloweenFilterProgress = 0
+    halloweenFilterProgress = 0 // NOVO: Reset do filtro
     endEffectsRunning = false
+    paused = false
     running = true
+
+    // NOVA: Inicia música de fundo no início do jogo
+    try {
+      bgMusic.currentTime = 0
+      bgMusic.play()
+    } catch {}
   }
 
+  // ===== PAUSA POR VISIBILIDADE (agora pausa música também) =====
+  const pauseByVisibility = (on) => {
+    if (on) {
+      paused = true
+      try {
+        bgMusic.pause()
+      } catch {}
+    } else {
+      lastTime = performance.now()
+      if (running) {
+        paused = false
+        try {
+          bgMusic.play()
+        } catch {}
+        requestAnimationFrame(gameLoop)
+      }
+    }
+  }
+
+  document.addEventListener('visibilitychange', () =>
+    pauseByVisibility(document.hidden),
+  )
+  window.addEventListener('blur', () => pauseByVisibility(true))
+  window.addEventListener('focus', () => pauseByVisibility(false))
+
+  // ===== GAME LOOP =====
   const gameLoop = (time) => {
-    if (!running) return
+    if (!running || paused) return
     requestAnimationFrame(gameLoop)
-    const delta = time - lastTime
+
+    let delta = time - lastTime
+    if (delta > 120) {
+      lastTime = time
+      return
+    }
     lastTime = time
+
     handleInput()
     updateGame(delta)
     draw()
@@ -214,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
       player.jumping = true
       player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY
       try {
+        jumpSound.currentTime = 0
         jumpSound.play()
       } catch {}
       keys['ArrowUp'] = false
@@ -223,7 +295,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const updateGame = (delta) => {
-    score = Math.max(score + delta / 1000, 0)
+    // MODIFICADO: Pontuação aumentada (2 pontos por segundo)
+    score = Math.max(score + (delta / 1000) * GAME_CONFIG.SCORE_MULTIPLIER, 0)
     scoreDisplay.textContent = Math.floor(score)
     gameSpeed += GAME_CONFIG.GAME_SPEED_INCREASE * (delta / 16.67)
 
@@ -231,8 +304,9 @@ document.addEventListener('DOMContentLoaded', () => {
       slowTimer > 0
         ? ((slowTimer -= delta / 16.67),
           (slowTimer = Math.max(slowTimer, 0)),
-          0.5)
+          GAME_CONFIG.SLOW_FACTOR)
         : 1
+
     const speedMult =
       powerupActive?.type === 'speed'
         ? ((powerupActive.timeLeft -= delta),
@@ -242,14 +316,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const effectiveScroll = gameSpeed * slowFactor * speedMult
 
-    // Física do player
+    // Física do jogador
     if (!player.jumping) {
-      player.y = groundY - normalHeight
+      player.y = GROUND_Y - PLAYER_NORMAL_HEIGHT
+      player.velocityY = 0
     } else {
       player.velocityY += GAME_CONFIG.PLAYER_GRAVITY * (delta / 16.67)
       player.y += player.velocityY * (delta / 16.67)
-      if (player.y >= groundY - normalHeight) {
-        player.y = groundY - normalHeight
+      if (player.y >= GROUND_Y - PLAYER_NORMAL_HEIGHT) {
+        player.y = GROUND_Y - PLAYER_NORMAL_HEIGHT
         player.jumping = false
         player.velocityY = 0
       }
@@ -260,13 +335,13 @@ document.addEventListener('DOMContentLoaded', () => {
       gameSpeed * (GAME_CONFIG.GHOST_SPEED_FACTOR - slowFactor * speedMult)
     relativeSpeed = Math.max(relativeSpeed, -gameSpeed * 0.1)
     ghost.x += relativeSpeed * (delta / 16.67)
-    if (ghost.x < -ghostWidth) ghost.x = -ghostWidth
+    if (ghost.x < -GHOST_WIDTH) ghost.x = -GHOST_WIDTH
 
     // Parallax
     bgX -= effectiveScroll * 0.5 * (delta / 16.67)
-    if (bgX <= -bgWidth) bgX += bgWidth
+    if (bgX <= -BG_WIDTH) bgX += BG_WIDTH
     groundX -= effectiveScroll * (delta / 16.67)
-    if (groundX <= -groundWidth) groundX += groundWidth
+    if (groundX <= -GROUND_WIDTH) groundX += GROUND_WIDTH
 
     frame += delta / 16.67
 
@@ -279,39 +354,55 @@ document.addEventListener('DOMContentLoaded', () => {
       Math.random() * (GAME_CONFIG.OBSTACLE_SPAWN_RATE_MAX - minSpawnDist) +
         minSpawnDist
     ) {
-      const type = Math.random() < 0.5 ? 'low' : 'high'
-      const obsY = type === 'low' ? groundY - lowObsHeight : highObsY
-      const obsH = type === 'low' ? lowObsHeight : highObsHeight
+      const pool = ['low', 'high', 'mid', 'low', 'high', 'mid', 'low']
+      let type = pool[Math.floor(Math.random() * pool.length)]
+
       const lastObs = obstacles.at(-1)
+      if (lastObs && lastObs.type === 'mid' && type === 'mid') {
+        type = Math.random() < 0.5 ? 'low' : 'high'
+      }
+
+      let obsY, obsH, obsW
+      if (type === 'low') {
+        obsY = OBS_LOW_Y
+        obsH = OBS_LOW_HEIGHT
+        obsW = OBS_LOW_WIDTH
+      } else if (type === 'high') {
+        obsY = OBS_HIGH_Y
+        obsH = OBS_HIGH_HEIGHT
+        obsW = OBS_HIGH_WIDTH
+      } else {
+        obsY = OBS_MID_Y
+        obsH = OBS_MID_HEIGHT
+        obsW = OBS_MID_WIDTH
+      }
+
       let spawnX = canvas.width + Math.random() * 100
-      if (lastObs && spawnX - lastObs.x < obsWidth * 2) spawnX += obsWidth * 2
-      obstacles.push({
-        x: spawnX,
-        y: obsY,
-        width: obsWidth,
-        height: obsH,
-        type,
-      })
+      if (lastObs && spawnX - lastObs.x < obsW * 2.5) spawnX += obsW * 2.5
+
+      obstacles.push({ x: spawnX, y: obsY, width: obsW, height: obsH, type })
       lastObstacle = frame
     }
 
-    // Spawn de powerups
+    // Spawn de powerups (CONFIRMADO: 50% speed, 50% shield - intacto)
     if (
       Math.random() < GAME_CONFIG.POWERUP_SPAWN_CHANCE * (delta / 16.67) &&
       frame - lastPowerup > 100
     ) {
-      const type = Math.random() < 0.5 ? 'speed' : 'shield'
-      const puY = groundY - normalHeight / 2 - Math.random() * 100
+      const type = Math.random() < 0.5 ? 'speed' : 'shield' // 50% chance para cada (escudo incluso)
+      const puY = GROUND_Y - PLAYER_NORMAL_HEIGHT / 2 - Math.random() * 100
       let spawnX = canvas.width + Math.random() * 100
       if (
-        obstacles.some((o) => Math.abs(spawnX - o.x) < powerupSize + obsWidth)
+        obstacles.some(
+          (o) => Math.abs(spawnX - o.x) < POWERUP_SIZE + o.width + 20,
+        )
       )
-        spawnX += powerupSize + obsWidth
+        spawnX += POWERUP_SIZE + 60
       powerups.push({
         x: spawnX,
         y: puY,
-        width: powerupSize,
-        height: powerupSize,
+        width: POWERUP_SIZE,
+        height: POWERUP_SIZE,
         type,
       })
       lastPowerup = frame
@@ -319,13 +410,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mover e limpar
     obstacles.forEach((o) => (o.x -= effectiveScroll * (delta / 16.67)))
-    obstacles = obstacles.filter((o) => o.x > -o.width)
+    obstacles = obstacles.filter((o) => o.x > -o.width - 50)
     powerups.forEach((p) => (p.x -= effectiveScroll * (delta / 16.67)))
-    powerups = powerups.filter((p) => p.x > -p.width)
+    powerups = powerups.filter((p) => p.x > -p.width - 50)
 
-    // Colisões
+    // Colisões com obstáculos (MODIFICADO: penalidade reduzida com powerup de velocidade)
     for (let i = 0; i < obstacles.length; i++) {
-      if (checkCollision(player, obstacles[i])) {
+      const o = obstacles[i]
+      if (checkCollisionByType(player, o)) {
         if (shieldActive) {
           shieldActive = false
         } else {
@@ -337,8 +429,14 @@ document.addEventListener('DOMContentLoaded', () => {
             endGame()
             return
           } else {
+            // Penalidade ajustada: com speed, perde o boost e tem slowdown mais curto (60 frames vs 90)
+            if (powerupActive?.type === 'speed') {
+              powerupActive = null // Encerra o powerup de velocidade na colisão
+              slowTimer = GAME_CONFIG.COLLISION_SLOW_DURATION_SPEED // Mais curto, menos punitivo
+            } else {
+              slowTimer = GAME_CONFIG.COLLISION_SLOW_DURATION_NORMAL // Penalidade normal
+            }
             score = Math.max(score - 2, 0)
-            slowTimer = 90
           }
         }
         obstacles.splice(i, 1)
@@ -346,25 +444,30 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Coleta de powerups
     for (let i = 0; i < powerups.length; i++) {
       if (checkCollision(player, powerups[i])) {
         try {
+          powerupSound.currentTime = 0
           powerupSound.play()
         } catch {}
         score += 2
         const p = powerups[i]
-        if (p.type === 'speed')
+        if (p.type === 'speed') {
           powerupActive = {
             type: 'speed',
             timeLeft: GAME_CONFIG.POWERUP_SPEED_BOOST_DURATION,
           }
-        else if (p.type === 'shield') shieldActive = true
-        slowTimer = 0
+        } else if (p.type === 'shield') {
+          shieldActive = true
+        }
+        slowTimer = 0 // Cancela slowdown ao pegar powerup
         powerups.splice(i, 1)
         break
       }
     }
 
+    // Game over por fantasma
     if (ghost.x + ghost.width >= player.x) {
       running = false
       try {
@@ -377,39 +480,117 @@ document.addEventListener('DOMContentLoaded', () => {
   const draw = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    ctx.drawImage(images.bg, bgX, 0, bgWidth, canvas.height)
-    ctx.drawImage(images.bg, bgX + bgWidth, 0, bgWidth, canvas.height)
+    // NOVO: Modo pós-gameover (desenha cena estática + abóboras se endEffectsRunning)
+    if (!running && endEffectsRunning) {
+      // Desenha fundo e chão congelados
+      ctx.drawImage(images.bg, finalBgX, 0, BG_WIDTH, canvas.height)
+      ctx.drawImage(images.bg, finalBgX + BG_WIDTH, 0, BG_WIDTH, canvas.height)
+      ctx.drawImage(
+        images.ground,
+        finalGroundX,
+        canvas.height - GROUND_HEIGHT,
+        GROUND_WIDTH,
+        GROUND_HEIGHT,
+      )
+      ctx.drawImage(
+        images.ground,
+        finalGroundX + GROUND_WIDTH,
+        canvas.height - GROUND_HEIGHT,
+        GROUND_WIDTH,
+        GROUND_HEIGHT,
+      )
+
+      // Desenha as abóboras (NOVO: só no pós-gameover)
+      if (pumpkinParticles.length) {
+        pumpkinParticles.forEach((p) => {
+          ctx.save()
+          ctx.translate(p.x, p.y)
+          ctx.rotate(p.rot)
+          ctx.globalAlpha = p.alpha
+          ctx.beginPath()
+          ctx.fillStyle = `rgba(255, ${120 + Math.floor(p.size)}, 0, 1)`
+          ctx.ellipse(0, 0, p.size, p.size * 0.8, 0, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillStyle = 'rgba(60,40,0,1)'
+          ctx.fillRect(
+            -p.size * 0.1,
+            -p.size * 0.9,
+            p.size * 0.2,
+            p.size * 0.25,
+          )
+          ctx.strokeStyle = 'rgba(160,80,0,0.6)'
+          ctx.lineWidth = Math.max(1, p.size * 0.08)
+          ctx.beginPath()
+          ctx.moveTo(-p.size * 0.3, -p.size * 0.1)
+          ctx.quadraticCurveTo(0, -p.size * 0.15, 0, 0)
+          ctx.stroke()
+          ctx.restore()
+        })
+      }
+
+      return // Para o draw() aqui no modo pós-gameover (o resto é para o jogo ativo)
+    }
+
+    // Desenho normal do jogo (se running)
+    // Fundo e chão
+    ctx.drawImage(images.bg, bgX, 0, BG_WIDTH, canvas.height)
+    ctx.drawImage(images.bg, bgX + BG_WIDTH, 0, BG_WIDTH, canvas.height)
     ctx.drawImage(
       images.ground,
       groundX,
-      canvas.height - groundHeight,
-      groundWidth,
-      groundHeight,
+      canvas.height - GROUND_HEIGHT,
+      GROUND_WIDTH,
+      GROUND_HEIGHT,
     )
     ctx.drawImage(
       images.ground,
-      groundX + groundWidth,
-      canvas.height - groundHeight,
-      groundWidth,
-      groundHeight,
+      groundX + GROUND_WIDTH,
+      canvas.height - GROUND_HEIGHT,
+      GROUND_WIDTH,
+      GROUND_HEIGHT,
     )
 
+    // Player
     const runImages = [images.playerRun1, images.playerRun2]
     const playerImg = player.jumping
       ? images.playerJump
       : player.ducking
       ? images.playerDuck
-      : runImages[Math.floor(frame / 5) % runImages.length]
-    ctx.drawImage(playerImg, player.x, player.y, player.width, normalHeight)
+      : runImages[Math.floor(frame / 5) % 2]
+    ctx.drawImage(
+      playerImg,
+      player.x,
+      player.y,
+      player.width,
+      PLAYER_NORMAL_HEIGHT,
+    )
 
+    // Fantasma
     const ghostImg = Math.floor(frame) % 20 < 10 ? images.ghost1 : images.ghost2
     ctx.drawImage(ghostImg, ghost.x, ghost.y, ghost.width, ghost.height)
 
+    // Obstáculos
     obstacles.forEach((o) => {
-      const img = o.type === 'low' ? images.obsLow : images.obsHigh
-      ctx.drawImage(img, o.x, o.y, o.width, o.height)
+      let img
+      if (o.type === 'low') {
+        img = images.obsLow
+        ctx.drawImage(img, o.x, o.y, o.width, o.height)
+      } else if (o.type === 'high') {
+        img = images.obsHigh
+        ctx.drawImage(img, o.x, o.y, o.width, o.height)
+      } else if (o.type === 'mid') {
+        img = Math.floor(frame / 10) % 2 === 0 ? images.obsMid1 : images.obsMid2
+        ctx.save()
+        ctx.shadowColor = 'rgba(255, 80, 80, 0.9)'
+        ctx.shadowBlur = Math.max(o.width, o.height) * 0.5
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+        ctx.drawImage(img, o.x, o.y, o.width, o.height)
+        ctx.restore()
+      }
     })
 
+    // Powerups
     powerups.forEach((p) => {
       const img = p.type === 'speed' ? images.powerSpeed : images.powerShield
       ctx.save()
@@ -442,6 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.restore()
     })
 
+    // Overlay de velocidade
     if (powerupActive?.type === 'speed') {
       ctx.save()
       const intensity = Math.min(
@@ -451,9 +633,10 @@ document.addEventListener('DOMContentLoaded', () => {
             0.2,
       )
       ctx.globalAlpha = intensity
-      ctx.fillStyle = 'rgba(255,200,50,1)'
+      ctx.fillStyle = 'rgba(255, 200, 50, 1)'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.restore()
+
       ctx.save()
       ctx.globalAlpha = 0.12
       for (let t = 0; t < 4; t++)
@@ -466,10 +649,11 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.restore()
     }
 
+    // Escudo
     if (shieldActive) {
-      const radius = Math.max(player.width, player.height) / 2 + 12
+      const radius = Math.max(player.width, PLAYER_NORMAL_HEIGHT) / 2 + 12
       const cx = player.x + player.width / 2
-      const cy = player.y + player.height / 2
+      const cy = player.y + PLAYER_NORMAL_HEIGHT / 2
       const gradient = ctx.createRadialGradient(
         cx,
         cy,
@@ -490,67 +674,51 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI)
       ctx.fill()
       ctx.globalAlpha = 1
-      ctx.strokeStyle = 'rgba(0,230,255,0.9)'
+      ctx.strokeStyle = 'rgba(0, 230, 255, 0.9)'
       ctx.lineWidth = 3
       ctx.beginPath()
       ctx.arc(cx, cy, radius + 2, 0, 2 * Math.PI)
       ctx.stroke()
       ctx.restore()
     }
-
-    if (endEffectsRunning && pumpkinParticles.length) {
-      pumpkinParticles.forEach((p) => {
-        ctx.save()
-        ctx.translate(p.x, p.y)
-        ctx.rotate(p.rot)
-        ctx.globalAlpha = p.alpha
-        ctx.beginPath()
-        ctx.fillStyle = `rgba(255, ${120 + Math.floor(p.size)}, 0, 1)`
-        ctx.ellipse(0, 0, p.size, p.size * 0.8, 0, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = 'rgba(60,40,0,1)'
-        ctx.fillRect(-p.size * 0.1, -p.size * 0.9, p.size * 0.2, p.size * 0.25)
-        ctx.strokeStyle = 'rgba(160,80,0,0.6)'
-        ctx.lineWidth = Math.max(1, p.size * 0.08)
-        ctx.beginPath()
-        ctx.moveTo(-p.size * 0.3, -p.size * 0.1)
-        ctx.quadraticCurveTo(0, -p.size * 0.15, 0, 0)
-        ctx.stroke()
-        ctx.restore()
-      })
-    }
   }
 
-  const startEndEffectsLoop = () => {
-    if (endEffectsRunning) return
-    endEffectsRunning = true
-    const step = () => {
-      draw()
-      halloweenFilterProgress = Math.min(1, halloweenFilterProgress + 0.01)
-      ctx.save()
-      ctx.fillStyle = `rgba(10, 6, 12, ${0.55 * halloweenFilterProgress})`
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.globalCompositeOperation = 'lighter'
-      ctx.fillStyle = `rgba(255, 100, 0, ${0.18 * halloweenFilterProgress})`
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.restore()
-      if (pumpkinParticles.length < 80 && Math.random() < 0.5) spawnPumpkin()
-      pumpkinParticles.forEach((p) => {
-        p.y -= p.speedY
-        p.x += Math.sin(p.life * 0.05) * 0.5
-        p.rot += p.rotSpeed
-        p.alpha -= 0.0025
-        p.life -= 1
-      })
-      pumpkinParticles = pumpkinParticles.filter(
-        (p) => p.alpha > 0 && p.life > 0,
-      )
-      requestAnimationFrame(step)
+  // ===== COLISÃO =====
+  const checkCollision = (a, b) => {
+    const margin = GAME_CONFIG.COLLISION_MARGIN
+    let effectiveY = a.y
+    let effectiveHeight = PLAYER_NORMAL_HEIGHT
+    if (a.ducking) {
+      effectiveY = a.y + (PLAYER_NORMAL_HEIGHT - PLAYER_DUCK_HEIGHT)
+      effectiveHeight = PLAYER_DUCK_HEIGHT
     }
-    requestAnimationFrame(step)
+    return (
+      a.x + margin < b.x + b.width - margin &&
+      a.x + a.width - margin > b.x + margin &&
+      effectiveY + margin < b.y + b.height - margin &&
+      effectiveY + effectiveHeight - margin > b.y + margin
+    )
   }
 
+  const checkCollisionByType = (a, b) => {
+    const margin = GAME_CONFIG.COLLISION_MARGIN
+    let effectiveY = a.y
+    let effectiveHeight = PLAYER_NORMAL_HEIGHT
+    if (b.type !== 'mid' && a.ducking) {
+      effectiveY = a.y + (PLAYER_NORMAL_HEIGHT - PLAYER_DUCK_HEIGHT)
+      effectiveHeight = PLAYER_DUCK_HEIGHT
+    }
+    return (
+      a.x + margin < b.x + b.width - margin &&
+      a.x + a.width - margin > b.x + margin &&
+      effectiveY + margin < b.y + b.height - margin &&
+      effectiveY + effectiveHeight - margin > b.y + margin
+    )
+  }
+
+  // ===== EFEITOS DE PARTÍCULAS (NOVO: Efeito de abóboras subindo) =====
   const spawnPumpkin = () => {
+    // NOVO: Abóboras spawnam de baixo para cima, aleatórias
     pumpkinParticles.push({
       x: Math.random() * canvas.width,
       y: canvas.height + (10 + Math.random() * 80),
@@ -563,7 +731,49 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
-  // ---------- Leaderboard em linha única "🥇Nome 123" ----------
+  const startEndEffectsLoop = () => {
+    if (endEffectsRunning) return
+    endEffectsRunning = true
+
+    const step = () => {
+      if (!endEffectsRunning) return
+
+      // NOVO: Desenha a cena estática + abóboras via draw()
+      draw()
+
+      // NOVO: Aplica filtro Halloween (escuro + laranja) gradualmente
+      halloweenFilterProgress = Math.min(1, halloweenFilterProgress + 0.01)
+      ctx.save()
+      ctx.fillStyle = `rgba(10, 6, 12, ${0.55 * halloweenFilterProgress})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.fillStyle = `rgba(255, 100, 0, ${0.18 * halloweenFilterProgress})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.restore()
+
+      // NOVO: Gera novas abóboras continuamente (máx 80)
+      if (pumpkinParticles.length < 80 && Math.random() < 0.5) {
+        spawnPumpkin()
+      }
+
+      // NOVO: Atualiza partículas (subindo, oscilando, girando, fading)
+      pumpkinParticles.forEach((p) => {
+        p.y -= p.speedY
+        p.x += Math.sin(p.life * 0.05) * 0.5
+        p.rot += p.rotSpeed
+        p.alpha -= 0.0025
+        p.life -= 1
+      })
+      pumpkinParticles = pumpkinParticles.filter(
+        (p) => p.alpha > 0 && p.life > 0,
+      )
+
+      requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }
+
+  // ===== RANKING =====
   const renderLeaderboardTableAll = (data, playerNameToHighlight = '') => {
     const tbody = document.querySelector('#leaderboard-table tbody')
     if (!tbody) return
@@ -579,7 +789,6 @@ document.addEventListener('DOMContentLoaded', () => {
         (item.name || '').trim().toLowerCase() ===
         playerNameToHighlight.trim().toLowerCase()
       const badge = isTop4 ? ['🥇', '🥈', '🥉', '🏅'][pos - 1] : `${pos}.`
-
       const tr = document.createElement('tr')
       if (isTop4) tr.classList.add('top4')
       if (isPlayer) tr.classList.add('highlight')
@@ -599,11 +808,11 @@ document.addEventListener('DOMContentLoaded', () => {
       : []
     const rows = sorted
       .map((item, i) => {
-        const pos = i + 1,
-          isTop4 = pos <= 4,
-          isPlayer =
-            (item.name || '').trim().toLowerCase() ===
-            playerNameToHighlight.trim().toLowerCase()
+        const pos = i + 1
+        const isTop4 = pos <= 4
+        const isPlayer =
+          (item.name || '').trim().toLowerCase() ===
+          playerNameToHighlight.trim().toLowerCase()
         const badge = isTop4 ? ['🥇', '🥈', '🥉', '🏅'][pos - 1] : `${pos}.`
         return `<tr class="${isTop4 ? 'top4' : ''} ${
           isPlayer ? 'highlight' : ''
@@ -642,6 +851,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const endGame = () => {
+    finalBgX = bgX
+    finalGroundX = groundX
+
+    // NOVA: Para a música de fundo no game over
+    try {
+      bgMusic.pause()
+    } catch {}
+
     gameOverScreen.innerHTML = `
       <h2>Game Over</h2>
       <p>Sua pontuação: ${Math.floor(score)}</p>
@@ -652,7 +869,11 @@ document.addEventListener('DOMContentLoaded', () => {
     gameOverScreen.style.display = 'flex'
 
     document.getElementById('restart-button')?.addEventListener('click', () => {
-      // Reiniciar SEM mostrar a intro; mantém fluxo na mesma sessão
+      // Para o efeito de partículas e reinicia música ao reiniciar
+      endEffectsRunning = false
+      halloweenFilterProgress = 0
+      pumpkinParticles = []
+      // Reinicia música ao reiniciar (via initGame)
       initGame()
       gameOverScreen.style.display = 'none'
       lastTime = performance.now()
@@ -681,25 +902,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (h3) h3.textContent = `Erro ao carregar Ranking: ${err.message}`
       })
 
+    // NOVO: Ativa o efeito de abóboras
     for (let i = 0; i < 18; i++) spawnPumpkin()
     startEndEffectsLoop()
-    try {
-      gameOverSound.play()
-    } catch {}
-  }
-
-  const checkCollision = (a, b) => {
-    let effectiveY = a.y,
-      effectiveHeight = normalHeight
-    if (a.ducking) {
-      effectiveY = a.y + (normalHeight - duckHeight)
-      effectiveHeight = duckHeight
-    }
-    return (
-      a.x < b.x + b.width &&
-      a.x + a.width > b.x &&
-      effectiveY < b.y + b.height &&
-      effectiveY + effectiveHeight > b.y
-    )
   }
 })
