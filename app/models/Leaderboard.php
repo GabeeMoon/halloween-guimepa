@@ -13,7 +13,6 @@ class Leaderboard
     if (!file_exists($this->file)) return [];
     $json = file_get_contents($this->file);
     if ($json === false) return [];
-
     $data = json_decode($json, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
       return [];
@@ -29,12 +28,10 @@ class Leaderboard
     foreach ($scores as &$entry) {
       if (($entry['name'] ?? '') === $playerName) {
         $found = true;
-        // Atualiza apenas se for maior!
         if ($score > $entry['score']) {
           $entry['score'] = $score;
           $entry['date'] = date('Y-m-d H:i');
         }
-        // Se não for maior, não faz nada!
         break;
       }
     }
@@ -47,7 +44,10 @@ class Leaderboard
     }
 
     usort($scores, fn($a, $b) => $b['score'] - $a['score']);
-    $scores = array_slice($scores, 0, 10);
+
+    // Mantém todos no arquivo (permite crescer), o frontend mostra Top 10 e o jogador
+    // Se preferir manter apenas 10 gravados, descomente a linha abaixo:
+    // $scores = array_slice($scores, 0, 10);
 
     $dir = dirname($this->file);
     if (!is_dir($dir)) {

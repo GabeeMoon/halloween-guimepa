@@ -41,13 +41,11 @@ class GameController
     }
 
     $playerName = trim($data['playerName'] ?? 'Anônimo');
-    // Sanitização básica: remover tags e limitar tamanho
     $playerName = strip_tags($playerName);
-    $playerName = mb_substr($playerName, 0, 32); // limite de 32 caracteres
+    $playerName = mb_substr($playerName, 0, 32);
     if ($playerName === '') $playerName = 'Anônimo';
 
     $score = (int) ($data['score'] ?? 0);
-
     if ($score < 0) {
       http_response_code(400);
       echo json_encode(['error' => 'Pontuação inválida']);
