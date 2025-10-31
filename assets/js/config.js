@@ -9,7 +9,7 @@ const GAME_CONFIG = {
   GAME_SPEED_INCREASE: 0.005,
 
   // Pontuação
-  SCORE_MULTIPLIER: 2, // Aumentado: 2 pontos por segundo (era 1)
+  SCORE_MULTIPLIER: 3, // Aumentado: 2 pontos por segundo (era 1)
 
   // Fantasma perseguidor
   GHOST_DISTANCE_BEHIND: 200,

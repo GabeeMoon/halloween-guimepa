@@ -34,7 +34,10 @@
       </div>
 
       <button id="intro-continue">Entrar no Desafio</button>
+
+
     </div>
+
   </div>
 
   <!-- Canvas e HUD -->
@@ -69,5 +72,6 @@
     </div>
   </div>
 </div>
+<script>
 
-<?php include __DIR__ . '/partials/footer.php'; ?>
+</script> <?php include __DIR__ . '/partials/footer.php'; ?>

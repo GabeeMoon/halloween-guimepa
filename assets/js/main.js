@@ -110,9 +110,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const gameOverSound = safeAudio(`${BASE}/assets/sounds/game_over.mp3`)
   const powerupSound = safeAudio(`${BASE}/assets/sounds/powerup.mp3`)
 
+  // NOVO: Som alternativo de game over (1 em 15)
+  const gameOverAltSound = safeAudio(`${BASE}/assets/sounds/game_over_alt.mp3`)
+
   // NOVA: Música de fundo (loop durante o jogo)
   const bgMusic = safeAudio(`${BASE}/assets/sounds/background.mp3`)
   bgMusic.loop = true
+
+  // ===== Função de game over com sorteio 1/15 =====
+  const playGameOverSound = () => {
+    try {
+      try {
+        bgMusic.pause()
+      } catch {}
+      const useAlt = Math.floor(Math.random() * 15) === 0 // 1 em 15
+      const s = useAlt ? gameOverAltSound : gameOverSound
+      s.currentTime = 0
+      s.play()
+    } catch {}
+  }
 
   // ===== DOM =====
   const introScreen = document.getElementById('intro-screen')
@@ -161,6 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let groundX = 0
   let finalBgX = 0
   let finalGroundX = 0
+
+  // NOVO: trava de pulo para impedir pulo contínuo
+  let jumpLock = false
 
   const keys = {}
   document.addEventListener('keydown', (e) => (keys[e.key] = true))
@@ -230,15 +249,16 @@ document.addEventListener('DOMContentLoaded', () => {
     endEffectsRunning = false
     paused = false
     running = true
+    jumpLock = false // reseta trava
 
-    // NOVA: Inicia música de fundo no início do jogo
+    // música de fundo
     try {
       bgMusic.currentTime = 0
       bgMusic.play()
     } catch {}
   }
 
-  // ===== PAUSA POR VISIBILIDADE (agora pausa música também) =====
+  // ===== PAUSA POR VISIBILIDADE =====
   const pauseByVisibility = (on) => {
     if (on) {
       paused = true
@@ -281,27 +301,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const handleInput = () => {
-    if ((keys['ArrowUp'] || keys[' ']) && !player.jumping) {
+    const jumpKeyDown = !!(keys['ArrowUp'] || keys[' '])
+    const crouchKeyDown = !!keys['ArrowDown']
+
+    // Pula apenas quando a tecla vai de solta -> pressionada (com jumpLock)
+    if (jumpKeyDown && !jumpLock && !player.jumping) {
       player.jumping = true
-      // Se estiver abaixado, pulo mais baixo (Ex: metade da altura padrão)
-      if (player.ducking) {
-        player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY * 0.7
-      } else {
-        player.velocityY = -GAME_CONFIG.PLAYER_JUMP_VELOCITY
-      }
+
+      // PULO BAIXO SOMENTE SE A TECLA DE AGACHAR ESTIVER PRESSIONADA AGORA
+      const isLowJump = crouchKeyDown
+      player.velocityY =
+        -GAME_CONFIG.PLAYER_JUMP_VELOCITY * (isLowJump ? 0.7 : 1)
+
       try {
         jumpSound.currentTime = 0
         jumpSound.play()
       } catch {}
-      keys['ArrowUp'] = false
-      keys[' '] = false
+      jumpLock = true
     }
-    player.ducking = keys['ArrowDown'] && !player.jumping
+
+    // Libera a trava quando soltar a tecla de pulo
+    if (!jumpKeyDown) {
+      jumpLock = false
+    }
+
+    // Estado de agachado: só no chão
+    player.ducking = crouchKeyDown && !player.jumping
   }
 
-
   const updateGame = (delta) => {
-    // MODIFICADO: Pontuação aumentada (2 pontos por segundo)
+    // Pontuação
     score = Math.max(score + (delta / 1000) * GAME_CONFIG.SCORE_MULTIPLIER, 0)
     scoreDisplay.textContent = Math.floor(score)
     gameSpeed += GAME_CONFIG.GAME_SPEED_INCREASE * (delta / 16.67)
@@ -390,12 +419,12 @@ document.addEventListener('DOMContentLoaded', () => {
       lastObstacle = frame
     }
 
-    // Spawn de powerups (CONFIRMADO: 50% speed, 50% shield - intacto)
+    // Spawn de powerups
     if (
       Math.random() < GAME_CONFIG.POWERUP_SPAWN_CHANCE * (delta / 16.67) &&
       frame - lastPowerup > 100
     ) {
-      const type = Math.random() < 0.5 ? 'speed' : 'shield' // 50% chance para cada (escudo incluso)
+      const type = Math.random() < 0.5 ? 'speed' : 'shield'
       const puY = GROUND_Y - PLAYER_NORMAL_HEIGHT / 2 - Math.random() * 100
       let spawnX = canvas.width + Math.random() * 100
       if (
@@ -420,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
     powerups.forEach((p) => (p.x -= effectiveScroll * (delta / 16.67)))
     powerups = powerups.filter((p) => p.x > -p.width - 50)
 
-    // Colisões com obstáculos (MODIFICADO: penalidade reduzida com powerup de velocidade)
+    // Colisões com obstáculos
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i]
       if (checkCollisionByType(player, o)) {
@@ -429,18 +458,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           if (slowTimer > 0) {
             running = false
-            try {
-              gameOverSound.play()
-            } catch {}
+            playGameOverSound()
             endGame()
             return
           } else {
-            // Penalidade ajustada: com speed, perde o boost e tem slowdown mais curto (60 frames vs 90)
             if (powerupActive?.type === 'speed') {
-              powerupActive = null // Encerra o powerup de velocidade na colisão
-              slowTimer = GAME_CONFIG.COLLISION_SLOW_DURATION_SPEED // Mais curto, menos punitivo
+              powerupActive = null
+              slowTimer = GAME_CONFIG.COLLISION_SLOW_DURATION_SPEED
             } else {
-              slowTimer = GAME_CONFIG.COLLISION_SLOW_DURATION_NORMAL // Penalidade normal
+              slowTimer = GAME_CONFIG.COLLISION_SLOW_DURATION_NORMAL
             }
             score = Math.max(score - 2, 0)
           }
@@ -467,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (p.type === 'shield') {
           shieldActive = true
         }
-        slowTimer = 0 // Cancela slowdown ao pegar powerup
+        slowTimer = 0
         powerups.splice(i, 1)
         break
       }
@@ -476,9 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Game over por fantasma
     if (ghost.x + ghost.width >= player.x) {
       running = false
-      try {
-        gameOverSound.play()
-      } catch {}
+      playGameOverSound()
       endGame()
     }
   }
@@ -486,9 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const draw = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // NOVO: Modo pós-gameover (desenha cena estática + abóboras se endEffectsRunning)
+    // Pós-gameover
     if (!running && endEffectsRunning) {
-      // Desenha fundo e chão congelados
       ctx.drawImage(images.bg, finalBgX, 0, BG_WIDTH, canvas.height)
       ctx.drawImage(images.bg, finalBgX + BG_WIDTH, 0, BG_WIDTH, canvas.height)
       ctx.drawImage(
@@ -506,7 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
         GROUND_HEIGHT,
       )
 
-      // Desenha as abóboras (NOVO: só no pós-gameover)
       if (pumpkinParticles.length) {
         pumpkinParticles.forEach((p) => {
           ctx.save()
@@ -534,11 +556,10 @@ document.addEventListener('DOMContentLoaded', () => {
         })
       }
 
-      return // Para o draw() aqui no modo pós-gameover (o resto é para o jogo ativo)
+      return
     }
 
-    // Desenho normal do jogo (se running)
-    // Fundo e chão
+    // Jogo ativo
     ctx.drawImage(images.bg, bgX, 0, BG_WIDTH, canvas.height)
     ctx.drawImage(images.bg, bgX + BG_WIDTH, 0, BG_WIDTH, canvas.height)
     ctx.drawImage(
@@ -556,7 +577,6 @@ document.addEventListener('DOMContentLoaded', () => {
       GROUND_HEIGHT,
     )
 
-    // Player
     const runImages = [images.playerRun1, images.playerRun2]
     const playerImg = player.jumping
       ? images.playerJump
@@ -571,11 +591,9 @@ document.addEventListener('DOMContentLoaded', () => {
       PLAYER_NORMAL_HEIGHT,
     )
 
-    // Fantasma
     const ghostImg = Math.floor(frame) % 20 < 10 ? images.ghost1 : images.ghost2
     ctx.drawImage(ghostImg, ghost.x, ghost.y, ghost.width, ghost.height)
 
-    // Obstáculos
     obstacles.forEach((o) => {
       let img
       if (o.type === 'low') {
@@ -596,7 +614,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     })
 
-    // Powerups
     powerups.forEach((p) => {
       const img = p.type === 'speed' ? images.powerSpeed : images.powerShield
       ctx.save()
@@ -629,7 +646,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.restore()
     })
 
-    // Overlay de velocidade
     if (powerupActive?.type === 'speed') {
       ctx.save()
       const intensity = Math.min(
@@ -655,7 +671,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.restore()
     }
 
-    // Escudo
     if (shieldActive) {
       const radius = Math.max(player.width, PLAYER_NORMAL_HEIGHT) / 2 + 12
       const cx = player.x + player.width / 2
@@ -722,9 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
     )
   }
 
-  // ===== EFEITOS DE PARTÍCULAS (NOVO: Efeito de abóboras subindo) =====
+  // ===== EFEITOS DE PARTÍCULAS =====
   const spawnPumpkin = () => {
-    // NOVO: Abóboras spawnam de baixo para cima, aleatórias
     pumpkinParticles.push({
       x: Math.random() * canvas.width,
       y: canvas.height + (10 + Math.random() * 80),
@@ -744,10 +758,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const step = () => {
       if (!endEffectsRunning) return
 
-      // NOVO: Desenha a cena estática + abóboras via draw()
       draw()
 
-      // NOVO: Aplica filtro Halloween (escuro + laranja) gradualmente
       halloweenFilterProgress = Math.min(1, halloweenFilterProgress + 0.01)
       ctx.save()
       ctx.fillStyle = `rgba(10, 6, 12, ${0.55 * halloweenFilterProgress})`
@@ -757,12 +769,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.restore()
 
-      // NOVO: Gera novas abóboras continuamente (máx 80)
       if (pumpkinParticles.length < 80 && Math.random() < 0.5) {
         spawnPumpkin()
       }
 
-      // NOVO: Atualiza partículas (subindo, oscilando, girando, fading)
       pumpkinParticles.forEach((p) => {
         p.y -= p.speedY
         p.x += Math.sin(p.life * 0.05) * 0.5
@@ -860,7 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
     finalBgX = bgX
     finalGroundX = groundX
 
-    // NOVA: Para a música de fundo no game over
     try {
       bgMusic.pause()
     } catch {}
@@ -875,11 +884,9 @@ document.addEventListener('DOMContentLoaded', () => {
     gameOverScreen.style.display = 'flex'
 
     document.getElementById('restart-button')?.addEventListener('click', () => {
-      // Para o efeito de partículas e reinicia música ao reiniciar
       endEffectsRunning = false
       halloweenFilterProgress = 0
       pumpkinParticles = []
-      // Reinicia música ao reiniciar (via initGame)
       initGame()
       gameOverScreen.style.display = 'none'
       lastTime = performance.now()
@@ -908,8 +915,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (h3) h3.textContent = `Erro ao carregar Ranking: ${err.message}`
       })
 
-    // NOVO: Ativa o efeito de abóboras
     for (let i = 0; i < 18; i++) spawnPumpkin()
     startEndEffectsLoop()
   }
-})
+}
+)
