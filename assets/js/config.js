@@ -9,18 +9,18 @@ const GAME_CONFIG = {
   GAME_SPEED_INCREASE: 0.005,
 
   // Pontuação
-  SCORE_MULTIPLIER: 3, // Aumentado: 2 pontos por segundo (era 1)
+  SCORE_MULTIPLIER: 5, // Aumentado: pontos por segundo
 
   // Fantasma perseguidor
-  GHOST_DISTANCE_BEHIND: 200,
-  GHOST_SPEED_FACTOR: 0.98,
+  GHOST_DISTANCE_BEHIND: 250,
+  GHOST_SPEED_FACTOR: 0.88,
 
   // Spawn de obstáculos
   OBSTACLE_SPAWN_RATE_MIN: 80,
   OBSTACLE_SPAWN_RATE_MAX: 150,
 
   // Spawn de powerups
-  POWERUP_SPAWN_CHANCE: 0.0008,
+  POWERUP_SPAWN_CHANCE: 0.001,
   POWERUP_SPEED_BOOST_DURATION: 3000,
   POWERUP_SPEED_BOOST_MULTIPLIER: 1.5,
 

@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const PLAYER_NORMAL_HEIGHT = 100
   const PLAYER_DUCK_HEIGHT = 50
   const PLAYER_WIDTH = 50
-  const PLAYER_X = 200
+  const PLAYER_X = 220
 
   const GHOST_WIDTH = 50
   const GHOST_HEIGHT = 100
@@ -29,10 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const OBS_HIGH_Y = GROUND_Y - PLAYER_NORMAL_HEIGHT - OBS_HIGH_HEIGHT + 50
 
   const OBS_MID_WIDTH = 50
-  const OBS_MID_HEIGHT = 90
+  const OBS_MID_HEIGHT = 65
   const OBS_MID_Y = GROUND_Y - OBS_MID_HEIGHT - 20
 
-  const POWERUP_SIZE = 30
+  const POWERUP_SIZE = 40
 
   const BG_WIDTH = 800
   const GROUND_WIDTH = 800
@@ -839,7 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .join('')
 
     container.innerHTML = `
-      <div class="leaderboard" style="width: 320px;">
+      <div class="leaderboard" style="width: 460px;">
         <table style="width:100%; border-collapse: collapse;">
           <thead><tr><th colspan="3">Ranking</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -918,5 +918,4 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let i = 0; i < 18; i++) spawnPumpkin()
     startEndEffectsLoop()
   }
-}
-)
+})

@@ -65,7 +65,7 @@ class GameController
     }
 
     // Limite máximo realista (baseado em jogo: ~2pts/s * 2500s = 5000, com boosts)
-    define('MAX_SCORE', 5000);
+    define('MAX_SCORE', 500);
     if ($score > MAX_SCORE) {
       http_response_code(400);
       $this->logSecurity('High score cheat attempt: ' . $score . ' by ' . $playerName . ' (max allowed: ' . MAX_SCORE . ')');

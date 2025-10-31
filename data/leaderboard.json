@@ -1,28 +1,88 @@
 [
     {
         "name": "Gabriel",
-        "score": 125,
-        "date": "2025-10-31 14:04:05"
+        "score": 341,
+        "date": "2025-10-31 19:09:42"
     },
     {
-        "name": "Fernando Maikut",
-        "score": 95,
-        "date": "2025-10-31 14:04:26"
+        "name": "PEDROSO",
+        "score": 312,
+        "date": "2025-10-31 18:55:51"
+    },
+    {
+        "name": "Frei Teófilo",
+        "score": 294,
+        "date": "2025-10-31 18:47:16"
     },
     {
         "name": "jone pecca the farmer",
-        "score": 85,
-        "date": "2025-10-31 14:04:37"
+        "score": 215,
+        "date": "2025-10-31 18:38:37"
+    },
+    {
+        "name": "leo",
+        "score": 214,
+        "date": "2025-10-31 18:46:40"
+    },
+    {
+        "name": "M4t3us",
+        "score": 188,
+        "date": "2025-10-31 18:49:34"
     },
     {
         "name": "TARCISIO",
-        "score": 80,
-        "date": "2025-10-31 14:05:04"
+        "score": 185,
+        "date": "2025-10-31 18:46:51"
+    },
+    {
+        "name": "Maikut",
+        "score": 180,
+        "date": "2025-10-31 18:40:58"
+    },
+    {
+        "name": "Dracula",
+        "score": 172,
+        "date": "2025-10-31 18:37:42"
     },
     {
         "name": "Vitor",
-        "score": 79,
-        "date": "2025-10-31 14:03:32"
+        "score": 158,
+        "date": "2025-10-31 18:45:50"
+    },
+    {
+        "name": "Dias",
+        "score": 128,
+        "date": "2025-10-31 18:38:52"
+    },
+    {
+        "name": " Vini ",
+        "score": 116,
+        "date": "2025-10-31 19:38:06"
+    },
+    {
+        "name": "Luiz",
+        "score": 103,
+        "date": "2025-10-31 14:16:15"
+    },
+    {
+        "name": "Thais",
+        "score": 100,
+        "date": "2025-10-31 14:06:45"
+    },
+    {
+        "name": "Ana Paula",
+        "score": 98,
+        "date": "2025-10-31 17:11:07"
+    },
+    {
+        "name": "Thays",
+        "score": 83,
+        "date": "2025-10-31 17:15:17"
+    },
+    {
+        "name": "Karin",
+        "score": 73,
+        "date": "2025-10-31 14:11:16"
     },
     {
         "name": "Eliezer",
@@ -30,23 +90,28 @@
         "date": "2025-10-31 14:02:43"
     },
     {
-        "name": "Matthews",
+        "name": "Clay",
         "score": 64,
-        "date": "2025-10-31 14:05:20"
+        "date": "2025-10-31 14:12:15"
     },
     {
-        "name": "Thais",
-        "score": 61,
-        "date": "2025-10-31 14:03:23"
-    },
-    {
-        "name": "Karin",
-        "score": 33,
-        "date": "2025-10-31 14:05:41"
+        "name": "Jaque",
+        "score": 58,
+        "date": "2025-10-31 14:08:17"
     },
     {
         "name": "Vini",
-        "score": 22,
-        "date": "2025-10-31 14:05:38"
+        "score": 57,
+        "date": "2025-10-31 14:07:06"
+    },
+    {
+        "name": "Pedroso",
+        "score": 21,
+        "date": "2025-10-31 21:05:09"
+    },
+    {
+        "name": "Fernando Moraes",
+        "score": 17,
+        "date": "2025-10-31 14:06:48"
     }
 ]
